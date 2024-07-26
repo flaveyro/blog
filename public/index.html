@@ -17,10 +17,54 @@
             color: #888;
             font-size: 0.9em;
         }
+        .post-image {
+            max-width: 100%;
+            height: auto;
+        }
+        #edit-post-form {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <h1>Entradas del Blog</h1>
+    
+    <div id="post-form">
+        <h2>Crear Nueva Entrada</h2>
+        <form id="create-post-form">
+            <label for="title">Título:</label>
+            <input type="text" id="title" name="title" required>
+            <br>
+            <label for="body">Contenido:</label>
+            <textarea id="body" name="body" required></textarea>
+            <br>
+            <label for="file">Adjuntar Archivo:</label>
+            <input type="file" id="file" name="file">
+            <br>
+            <button type="submit">Crear</button>
+        </form>
+    </div>
+    
+    <div id="edit-post-form">
+        <h2>Editar Entrada</h2>
+        <form id="edit-post-form-inner">
+            <label for="edit-title">Título:</label>
+            <input type="text" id="edit-title" name="title" required>
+            <br>
+            <label for="edit-body">Contenido:</label>
+            <textarea id="edit-body" name="body" required></textarea>
+            <br>
+            <label for="edit-file">Adjuntar Nuevo Archivo:</label>
+            <input type="file" id="edit-file" name="file">
+            <br>
+            <input type="checkbox" id="remove-file" name="removeFile" value="true">
+            <label for="remove-file">Eliminar Archivo Existente</label>
+            <br>
+            <button type="submit">Guardar Cambios</button>
+            <button type="button" onclick="cancelEdit()">Cancelar</button>
+        </form>
+    </div>
+    
     <div id="posts"></div>
 
     <script>
@@ -46,9 +90,27 @@
                     const body = document.createElement('p');
                     body.textContent = post.body;
 
+                    if (post.file) {
+                        const image = document.createElement('img');
+                        image.src = `http://localhost:3000/${post.file}`;
+                        image.classList.add('post-image');
+                        postDiv.appendChild(image);
+                    }
+
+                    const editButton = document.createElement('button');
+                    editButton.textContent = 'Editar';
+                    editButton.onclick = () => showEditForm(post._id, post.title, post.body, post.file);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Eliminar';
+                    deleteButton.onclick = () => deletePost(post._id);
+
                     postDiv.appendChild(title);
                     postDiv.appendChild(date);
                     postDiv.appendChild(body);
+                    postDiv.appendChild(editButton);
+                    postDiv.appendChild(deleteButton);
+
                     postsDiv.appendChild(postDiv);
                 });
             } catch (error) {
@@ -56,8 +118,90 @@
             }
         }
 
-        // Llamar a la función para obtener y mostrar las entradas
+        async function createPost(event) {
+            event.preventDefault();
+            const formData = new FormData(document.getElementById('create-post-form'));
+
+            try {
+                const response = await fetch('http://localhost:3000/posts', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (response.ok) {
+                    fetchPosts();
+                    document.getElementById('create-post-form').reset();
+                } else {
+                    console.error('Error creating post:', await response.json());
+                }
+            } catch (error) {
+                console.error('Error creating post:', error);
+            }
+        }
+
+        async function deletePost(id) {
+            try {
+                const response = await fetch(`http://localhost:3000/posts/${id}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    fetchPosts();
+                } else {
+                    const errorData = await response.json();
+                    console.error('Error deleting post:', errorData.message);
+                }
+            } catch (error) {
+                console.error('Error deleting post:', error);
+            }
+        }
+
+        function showEditForm(id, title, body, file) {
+            document.getElementById('edit-post-form').style.display = 'block';
+            document.getElementById('edit-title').value = title;
+            document.getElementById('edit-body').value = body;
+            document.getElementById('remove-file').checked = false;
+            document.getElementById('edit-post-form-inner').onsubmit = (event) => editPost(event, id, file);
+        }
+
+        function cancelEdit() {
+            document.getElementById('edit-post-form').style.display = 'none';
+            document.getElementById('edit-post-form-inner').reset();
+        }
+
+        async function editPost(event, id) {
+            event.preventDefault();
+            const formData = new FormData(document.getElementById('edit-post-form-inner'));
+
+            if (document.getElementById('edit-file').files.length === 0) {
+                formData.delete('file'); // Elimina el campo 'file' si no se selecciona ningún archivo nuevo
+            }
+
+            if (document.getElementById('remove-file').checked) {
+                formData.set('removeFile', 'true');
+            } else {
+                formData.delete('removeFile');
+            }
+
+            try {
+                const response = await fetch(`http://localhost:3000/posts/${id}`, {
+                    method: 'PUT',
+                    body: formData
+                });
+                if (response.ok) {
+                    fetchPosts();
+                    cancelEdit();
+                } else {
+                    console.error('Error editing post:', await response.json());
+                }
+            } catch (error) {
+                console.error('Error editing post:', error);
+            }
+        }
+
+        // Inicializa la página cargando las publicaciones
         fetchPosts();
+
+        // Añadir evento de creación de post
+        document.getElementById('create-post-form').addEventListener('submit', createPost);
     </script>
 </body>
 </html>

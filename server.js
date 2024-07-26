@@ -6,6 +6,7 @@ const app = express();
 
 // Middleware
 app.use(bodyParser.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // Servir archivos estáticos
 
 // Conexión a MongoDB (sin opciones deprecadas)
 mongoose.connect('mongodb://localhost/blog')
@@ -16,11 +17,8 @@ mongoose.connect('mongodb://localhost/blog')
 const postsRoute = require('./routes/posts');
 app.use('/posts', postsRoute);
 
-// Servir archivos estáticos (tu archivo HTML)
-app.use(express.static(path.join(__dirname, 'public')));
-
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));  // Asegúrate de que el archivo HTML esté en la carpeta "public"
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
